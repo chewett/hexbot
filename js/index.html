@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta name="author" content="Christopher Hewett">
+    <title>Noops Hexbot Challenge</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <style>
+        #colourCode {
+            text-align: center;
+            line-height: 100vh;
+            width: 100%;
+            height: 100%;
+            font-size: 20vw;
+            font-family: sans-serif;
+        }
+    </style>
+</head>
+<body>
+
+<div id="colourCode">Loading...</div>
+
+<script>
+
+function fetchNewColour() {
+    window
+        .fetch('https://api.noopschallenge.com/hexbot')
+        .then(function (response) {
+            return response.json();
+        })
+        .then(function (myJson) {
+            var singleColour = myJson['colors'][0]['value'];
+
+
+            $("body").css("background-color", singleColour);
+            $("#colourCode").text(singleColour);
+        });
+}
+
+window.onload = function() {
+    fetchNewColour();
+    setInterval(fetchNewColour, 60000);
+}
+
+</script>
+</body>
+</html>
