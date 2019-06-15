@@ -6,17 +6,19 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
     <style>
         #mainDiv {
-            padding: 30vh 0;
+            padding: 20vh 0;
             text-align: center;
             width: 100%;
             height: 100%;
             font-family: sans-serif;
         }
+        #mainDiv.blackText { color: black; }
+        #mainDiv.whiteText { color: white; }
         #colourCode {
             font-size: 20vh;
         }
 
-        #colourOfMinuteText {
+        .smallerInfoText {
             font-size: 5em;
         }
 
@@ -26,25 +28,105 @@
 
 <div id="mainDiv">
 
-    <span id="colourOfMinuteText">
+    <span class="smallerInfoText">
         Colour of the minute:
     </span>
     <br />
 
     <span id="colourCode">
         Loading...
-    </span>
+    </span> <br />
+    <span class="smallerInfoText" id="hspValue"></span>
 </div>
 
 <script>
+
+function hexToInts(hexCode) {
+    return {
+        "r": parseInt(hexCode.substr(1, 2), 16),
+        "g": parseInt(hexCode.substr(3, 2), 16),
+        "b":parseInt(hexCode.substr(5, 2), 16)
+    }
+}
+
+function intsToHex(ints) {
+    //TODO:
+    return "#FFFFF";
+}
+
+// Simple extension of Pythagoras Theorum to 3 dimensions, aka the colour space of RGB
+// Unused for now
+function euclideanDistance(intColourOne, intColourTwo) {
+    return Math.sqrt(Math.pow(intColourOne.r - intColourTwo.r, 2) + Math.pow(intColourOne.g - intColourTwo.g, 2) + Math.pow(intColourOne.b - intColourTwo.b, 2));
+}
+
+function transitionColours(intColourOne, intColourTwo, transitionPoints) {
+    var diffR = intColourTwo.r - intColourOne.r;
+    var diffG = intColourTwo.g - intColourOne.g;
+    var diffB = intCOlourTwo.b - intCOlourOne.b;
+
+    var stepR = diffR / (transitionPoints + 1);
+    var stepG = diffG / (transitionPoints + 1);
+    var stepB = diffB / (transitionPoints + 1);
+
+    var allNewColours = [];
+    var currentColour = {"r": intColourOne.r, "g": intColourOne.g, "b": intCOlourOne.b};
+    for(var i =0; i < transitionPoints; i++) {
+        var newColour = {"r": currentColour.r + stepR, "g": currentColour.g + stepG, "b": currentColour.b + stepB};
+        allNewColours.push(newColour);
+        currentColour.r = newColour.r;
+        currentColour.g = newColour.g;
+        currentColour.b = newColour.b;
+    }
+
+    //TODO: put the first and last colours on it:
+
+    return allNewColours;
+}
+
+
+
+
+
+
+function calculateHSP(hexCode) {
+    //This uses the HSP algorithm described here: http://alienryderflex.com/hsp.html
+    var hexCodeVals = hexToInts(hexCode);
+
+    return Math.sqrt((0.299 * hexCodeVals.r * hexCodeVals.r) + (0.587 * hexCodeVals.g * hexCodeVals.g) + (0.114 * hexCodeVals.b * hexCodeVals.b));
+}
+
+//Convert 255 to 0 and vice versa.
+function invertHexcode(hexCode) {
+    var ints = hexToInts(hexCode);
+    ints.r = 255 - ints.r;
+    ints.g = 255 - ints.g;
+    ints.b = 255 - ints.b;
+
+    return intsToHex(ints);
+
+}
+
+
+
 
 function fetchNewColour() {
 
     $.getJSON('https://api.noopschallenge.com/hexbot', function (myJson) {
         var singleColour = myJson['colors'][0]['value'];
 
+        var hsp = calculateHSP(singleColour);
+        if(hsp > (255 / 2)) {
+            $("#mainDiv").removeClass("whiteText");
+            $("#mainDiv").addClass("blackText");
+        }else{
+            $("#mainDiv").removeClass("blackText");
+            $("#mainDiv").addClass("whiteText");
+        }
+
         $("body").css("background-color", singleColour);
         $("#colourCode").text(singleColour);
+        $("#hspValue").text("HSP value: " + hsp.toFixed(2));
     });
 }
 
