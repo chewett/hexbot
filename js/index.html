@@ -222,11 +222,12 @@ function drawColour(hexColour) {
         ctx.fill();
 
         ctx.fillStyle = fontColour;
-        ctx.font = '48px sans-serif';
+        ctx.font = '36px sans-serif';
         if (currentColourType === "normal") {
             drawTextInCenter(ctx, currentTitleOfText, baseXOffset, 50, MAIN_PANEL_WIDTH);
             drawTextInCenter(ctx, "Current colour: " + colourCurrentlyUsing.toString(), baseXOffset, 100, MAIN_PANEL_WIDTH);
         }else{
+            drawTextInCenter(ctx, "Chewett.co.uk", baseXOffset, 50, MAIN_PANEL_WIDTH);
             drawTextInCenter(ctx, "Inverted colour: " + colourCurrentlyUsing.toString(), baseXOffset, 100, MAIN_PANEL_WIDTH);
         }
 
