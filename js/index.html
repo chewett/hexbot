@@ -6,53 +6,125 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
     <style>
         #mainDiv {
-            padding: 20vh 0;
             text-align: center;
             width: 100%;
             height: 100%;
-            font-family: sans-serif;
+            margin: 0;
+            padding: 0;
         }
-        #mainDiv.blackText { color: black; }
-        #mainDiv.whiteText { color: white; }
-        #colourCode {
-            font-size: 20vh;
+        body {
+            margin: 0;
+            padding: 0;
+            overflow:hidden;
+        }
+        html {
+            margin: 0;
+            padding: 0;
         }
 
-        .smallerInfoText {
-            font-size: 5em;
-        }
 
     </style>
 </head>
 <body>
 
 <div id="mainDiv">
-
-    <span class="smallerInfoText">
-        Colour of the minute:
-    </span>
-    <br />
-
-    <span id="colourCode">
-        Loading...
-    </span> <br />
-    <span class="smallerInfoText" id="hspValue"></span>
+    <canvas id="canvas" width="1" height="1"></canvas>
 </div>
 
 <script>
 
-function hexToInts(hexCode) {
-    return {
-        "r": parseInt(hexCode.substr(1, 2), 16),
-        "g": parseInt(hexCode.substr(3, 2), 16),
-        "b":parseInt(hexCode.substr(5, 2), 16)
-    }
-}
+var HexColour = (function() {
 
-function intsToHex(ints) {
-    //TODO:
-    return "#FFFFF";
-}
+    var HexColour = function(hexCode) {
+        if(hexCode) {
+            this.r = parseInt(hexCode.substr(1, 2), 16);
+            this.g = parseInt(hexCode.substr(3, 2), 16);
+            this.b = parseInt(hexCode.substr(5, 2), 16);
+        }
+    };
+
+    HexColour.prototype.getInverted = function() {
+        var newColour = new HexColour();
+        newColour.r = 255 - this.r;
+        newColour.g = 255 - this.g;
+        newColour.b = 255 - this.b;
+
+        return newColour;
+    };
+
+    //This uses the HSP algorithm described here: http://alienryderflex.com/hsp.html
+    HexColour.prototype.getHSP = function() {
+        return Math.sqrt((0.299 * this.r * this.r) + (0.587 * this.g * this.g) + (0.114 * this.b * this.b));
+    };
+
+    HexColour.prototype.getTextColourBasedOnHsp = function() {
+        return (this.getHSP()  > (255 / 2)) ? "black" : "white";
+    }
+
+    HexColour.prototype._flipColours = function(r, g, b) {
+        var newColour = new HexColour();
+        newColour.r = this[r];
+        newColour.g = this[g];
+        newColour.b = this[b];
+
+        return newColour;
+    };
+
+    //RGB is obviously "Normal"
+    HexColour.prototype.getColourAsRBG = function() { return this._flipColours("r", "b", "g"); };
+
+    HexColour.prototype.getColourAsBRG = function() { return this._flipColours("b", "r", "g"); };
+    HexColour.prototype.getColourAsBGR = function() { return this._flipColours("b", "g", "r"); };
+
+    HexColour.prototype.getColourAsGBR = function() { return this._flipColours("g", "b", "r"); };
+    HexColour.prototype.getColourAsGRB = function() { return this._flipColours("g", "r", "b"); };
+
+
+    HexColour.prototype.toString = function() {
+        return "#" + this.r.toString(16).toUpperCase().padStart(2, '0') + this.g.toString(16).toUpperCase().padStart(2, '0') + this.b.toString(16).toUpperCase().padStart(2, '0');
+    };
+
+    HexColour.prototype.createTransitionTable = function(endHexColour, transitionPoints) {
+        var diffR = endHexColour.r - this.r;
+        var diffG = endHexColour.g - this.g;
+        var diffB = endHexColour.b - this.b;
+
+        var stepR = diffR / (transitionPoints + 1);
+        var stepG = diffG / (transitionPoints + 1);
+        var stepB = diffB / (transitionPoints + 1);
+
+        var allNewColours = [this];
+        var currentColour = {"r": this.r, "g": this.g, "b": this.b};
+        for(var i =0; i < transitionPoints; i++) {
+            var newColour = new HexColour();
+            newColour.r = currentColour.r + stepR;
+            newColour.g = currentColour.g + stepG;
+            newColour.b = currentColour.b + stepB;
+
+            allNewColours.push(newColour);
+            currentColour.r = newColour.r;
+            currentColour.g = newColour.g;
+            currentColour.b = newColour.b;
+        }
+        allNewColours.push(endHexColour);
+
+        for(var newColourIndex = 0; newColourIndex < allNewColours.length; newColourIndex++) {
+            allNewColours[newColourIndex].r = Math.round(allNewColours[newColourIndex].r);
+            allNewColours[newColourIndex].g = Math.round(allNewColours[newColourIndex].g);
+            allNewColours[newColourIndex].b = Math.round(allNewColours[newColourIndex].b);
+        }
+
+        return allNewColours;
+    };
+
+    //Why doesnt this have equality functions, booo!
+    HexColour.prototype.equals = function(secondHexColour) {
+        return this.r === secondHexColour.r && this.g === secondHexColour.g && this.b === secondHexColour.b;
+    };
+
+    return HexColour;
+
+})();
 
 // Simple extension of Pythagoras Theorum to 3 dimensions, aka the colour space of RGB
 // Unused for now
@@ -60,79 +132,149 @@ function euclideanDistance(intColourOne, intColourTwo) {
     return Math.sqrt(Math.pow(intColourOne.r - intColourTwo.r, 2) + Math.pow(intColourOne.g - intColourTwo.g, 2) + Math.pow(intColourOne.b - intColourTwo.b, 2));
 }
 
-function transitionColours(intColourOne, intColourTwo, transitionPoints) {
-    var diffR = intColourTwo.r - intColourOne.r;
-    var diffG = intColourTwo.g - intColourOne.g;
-    var diffB = intCOlourTwo.b - intCOlourOne.b;
 
-    var stepR = diffR / (transitionPoints + 1);
-    var stepG = diffG / (transitionPoints + 1);
-    var stepB = diffB / (transitionPoints + 1);
+var currentColour = new HexColour("#FFFFFF");
+var mostRecentlyDrawnColour = new HexColour("#FFFFFF");
+var colourTransitions = [];
+var currentTransitionIndex = 0;
 
-    var allNewColours = [];
-    var currentColour = {"r": intColourOne.r, "g": intColourOne.g, "b": intCOlourOne.b};
-    for(var i =0; i < transitionPoints; i++) {
-        var newColour = {"r": currentColour.r + stepR, "g": currentColour.g + stepG, "b": currentColour.b + stepB};
-        allNewColours.push(newColour);
-        currentColour.r = newColour.r;
-        currentColour.g = newColour.g;
-        currentColour.b = newColour.b;
+function transition() {
+    console.log("transitioning");
+
+    var newHex = colourTransitions[currentTransitionIndex];
+    if(newHex.equals(currentColour)) {
+        currentTitleOfText = "Colour of the Minute:";
+        drawColour(newHex);
+    }else {
+        drawColour(newHex);
+        currentTransitionIndex++;
+        setTimeout(transition, 100)
+    }
+}
+
+var canvas = $("#canvas");
+var c = document.getElementById("canvas");
+var ctx = c.getContext("2d");
+var currentTitleOfText = "";
+
+
+var PERMUTATIONS = ["getColourAsRBG", "getColourAsBRG", "getColourAsBGR", "getColourAsGBR", "getColourAsGRB"];
+
+var height, width, INVERTED_PERCENTAGE_RIGHT, MAIN_PANEL_WIDTH, MAIN_COLOUR_HEIGHT, PERMUTATIONS_COLOUR_HEIGHT, INDIVIDUAL_PERMUTATION_HEIGHT;
+function handleResize() {
+
+    width = $(window).width();
+    height = $(window).height();
+
+    canvas.attr("height", height);
+    canvas.attr("width", width);
+
+    INVERTED_PERCENTAGE_RIGHT = 50;
+    MAIN_PANEL_WIDTH = width / (100 / INVERTED_PERCENTAGE_RIGHT);
+
+    MAIN_COLOUR_HEIGHT = height * (25 / 100);
+    PERMUTATIONS_COLOUR_HEIGHT = height - MAIN_COLOUR_HEIGHT;
+    INDIVIDUAL_PERMUTATION_HEIGHT = PERMUTATIONS_COLOUR_HEIGHT / PERMUTATIONS.length;
+
+    drawColour(mostRecentlyDrawnColour);
+}
+handleResize();
+
+window.addEventListener('resize', handleResize);
+
+
+function drawTextInCenter(ctx, text, xOffset, yOffset, centerWidth, centerHeight) {
+    var textMeasure = ctx.measureText(text);
+    // The width of an M is roughly the height of the character set, see https://stackoverflow.com/a/13318387
+    var roughLineHeight = ctx.measureText('M').width;
+
+    var finalXOffset = xOffset + (centerWidth ? ((centerWidth - textMeasure.width) / 2) : 0);
+    var finalYOffset = yOffset + (centerHeight ? ((centerHeight + roughLineHeight) / 2) : 0);
+
+    ctx.fillText(text, finalXOffset, finalYOffset);
+}
+
+/**
+ *
+ * @param {HexColour} hexColour
+ */
+function drawColour(hexColour) {
+    mostRecentlyDrawnColour = hexColour;
+
+    var typeOfColour = ["normal", "inverted"];
+
+    for(var indexOfColourType = 0; indexOfColourType < typeOfColour.length; indexOfColourType++) {
+
+        var currentColourType = typeOfColour[indexOfColourType];
+        var colourCurrentlyUsing = hexColour;
+        var baseXOffset = 0;
+        if(currentColourType === "inverted") {
+            colourCurrentlyUsing = hexColour.getInverted();
+            baseXOffset = MAIN_PANEL_WIDTH;
+        }
+
+        var hsp = colourCurrentlyUsing.getHSP();
+        var fontColour = colourCurrentlyUsing.getTextColourBasedOnHsp();
+
+        ctx.fillStyle = colourCurrentlyUsing.toString();
+        ctx.beginPath();
+        ctx.rect(baseXOffset, 0, MAIN_PANEL_WIDTH, MAIN_COLOUR_HEIGHT);
+        ctx.fill();
+
+        ctx.fillStyle = fontColour;
+        ctx.font = '48px sans-serif';
+        if (currentColourType === "normal") {
+            drawTextInCenter(ctx, currentTitleOfText, baseXOffset, 50, MAIN_PANEL_WIDTH);
+            drawTextInCenter(ctx, "Current colour: " + colourCurrentlyUsing.toString(), baseXOffset, 100, MAIN_PANEL_WIDTH);
+        }else{
+            drawTextInCenter(ctx, "Inverted colour: " + colourCurrentlyUsing.toString(), baseXOffset, 100, MAIN_PANEL_WIDTH);
+        }
+
+        drawTextInCenter(ctx, "HSP value: " + hsp.toFixed(2), baseXOffset, 150, MAIN_PANEL_WIDTH);
+
+        var permStartPos = MAIN_COLOUR_HEIGHT;
+        for(var permIndex = 0; permIndex < PERMUTATIONS.length; permIndex++) {
+            var newPermColour = colourCurrentlyUsing[PERMUTATIONS[permIndex]]();
+            var newPermHexString = newPermColour.toString();
+            ctx.fillStyle = newPermHexString;
+
+            ctx.beginPath();
+            ctx.rect(baseXOffset, permStartPos, MAIN_PANEL_WIDTH, INDIVIDUAL_PERMUTATION_HEIGHT);
+            ctx.fill();
+
+            ctx.fillStyle = newPermColour.getTextColourBasedOnHsp();
+            drawTextInCenter(ctx, "RGB transformed to " + PERMUTATIONS[permIndex].slice(PERMUTATIONS[permIndex].length - 3) +": " + newPermHexString, baseXOffset, permStartPos, MAIN_PANEL_WIDTH, INDIVIDUAL_PERMUTATION_HEIGHT);
+
+            permStartPos += INDIVIDUAL_PERMUTATION_HEIGHT;
+        }
     }
 
-    //TODO: put the first and last colours on it:
-
-    return allNewColours;
-}
 
 
 
 
-
-
-function calculateHSP(hexCode) {
-    //This uses the HSP algorithm described here: http://alienryderflex.com/hsp.html
-    var hexCodeVals = hexToInts(hexCode);
-
-    return Math.sqrt((0.299 * hexCodeVals.r * hexCodeVals.r) + (0.587 * hexCodeVals.g * hexCodeVals.g) + (0.114 * hexCodeVals.b * hexCodeVals.b));
-}
-
-//Convert 255 to 0 and vice versa.
-function invertHexcode(hexCode) {
-    var ints = hexToInts(hexCode);
-    ints.r = 255 - ints.r;
-    ints.g = 255 - ints.g;
-    ints.b = 255 - ints.b;
-
-    return intsToHex(ints);
 
 }
-
-
 
 
 function fetchNewColour() {
+    console.log("Fetching new colour");
 
     $.getJSON('https://api.noopschallenge.com/hexbot', function (myJson) {
-        var singleColour = myJson['colors'][0]['value'];
+        var singleColour = new HexColour(myJson['colors'][0]['value']);
+        currentTitleOfText = "Transitioning " + currentColour + " to " + singleColour;
 
-        var hsp = calculateHSP(singleColour);
-        if(hsp > (255 / 2)) {
-            $("#mainDiv").removeClass("whiteText");
-            $("#mainDiv").addClass("blackText");
-        }else{
-            $("#mainDiv").removeClass("blackText");
-            $("#mainDiv").addClass("whiteText");
-        }
+        colourTransitions = currentColour.createTransitionTable(singleColour, 50);
 
-        $("body").css("background-color", singleColour);
-        $("#colourCode").text(singleColour);
-        $("#hspValue").text("HSP value: " + hsp.toFixed(2));
+        currentColour = singleColour;
+        currentTransitionIndex = 0;
+        transition();
     });
 }
 
 window.onload = function() {
     fetchNewColour();
-    setInterval(fetchNewColour, 60000);
+    setInterval(fetchNewColour, 15000);
 }
 
 </script>
