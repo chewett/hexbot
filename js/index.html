@@ -28,7 +28,9 @@
 <body>
 
 <div id="mainDiv">
-    <canvas id="canvas" width="1" height="1"></canvas>
+    <a href="http://chewett.co.uk/noops/">
+        <canvas id="canvas" width="1" height="1"></canvas>
+    </a>
 </div>
 
 <script>
@@ -59,7 +61,7 @@ var HexColour = (function() {
 
     HexColour.prototype.getTextColourBasedOnHsp = function() {
         return (this.getHSP()  > (255 / 2)) ? "black" : "white";
-    }
+    };
 
     HexColour.prototype._flipColours = function(r, g, b) {
         var newColour = new HexColour();
@@ -249,11 +251,6 @@ function drawColour(hexColour) {
             permStartPos += INDIVIDUAL_PERMUTATION_HEIGHT;
         }
     }
-
-
-
-
-
 
 }
 
